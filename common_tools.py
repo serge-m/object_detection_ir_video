@@ -12,8 +12,10 @@ import logging_tools, logging
 
 __author__ = 'Sergey Matyunin'
 
-
-
+th_color = 5
+th_min_size = 50
+th_max_size = 1000000
+radius_markup_expansion = 10
 
 def read_frame(path):
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
@@ -30,8 +32,6 @@ def read_markup(path_labels):
 def get_segm(diff):
     markers = np.zeros_like(diff)
 
-    th_color = 3
-    th_min_size = 50
     markers[diff > th_color] = 2
     markers[diff < -th_color] = 3
 
@@ -70,7 +70,7 @@ def ext_rect(rect, border=0):
 
 
 def is_in_markup(region, markup1):
-    if region.area < 50 or region.area > 1000000:
+    if region.area < th_min_size or region.area > th_max_size:
         return False
 
     minr, minc, maxr, maxc = region['bbox']
@@ -120,7 +120,7 @@ def regions_to_feats(region0, region1,  markup0, markup1, classifier=None):
 
 
 def read_frame_and_labels(path_img, path_labels):
-    return read_frame(path_img), [ext_rect(rect, 10) for rect in read_markup(path_labels)]
+    return read_frame(path_img), [ext_rect(rect, radius_markup_expansion) for rect in read_markup(path_labels)]
 
 
 def process_one_frame(path_img0, path_labels0, path_img1, path_labels1,
