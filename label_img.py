@@ -9,8 +9,7 @@ import itertools
 import os
 import csv
 import logging
-import logging.config
-import json 
+import logging_tools
 
 
 _button_reset = "r"
@@ -18,17 +17,6 @@ _button_add = "a"
 _button_quit = "q"
 _button_save = "s"
 _postfix_labels_file = ".labels.txt"
-
-def setup_logging():
-    """
-    Setup logging module using 'logging_config.json' configuration file
-    :return:
-    """
-    name_json = 'logging_config.json'
-    path_json = os.path.join(os.path.dirname(__file__), name_json)
-    with open(path_json, 'r') as f_json:
-        dict_config = json.load(f_json)
-    logging.config.dictConfig(dict_config)
 
 
 class ImgNames(object):
@@ -255,7 +243,7 @@ def interactive_labeling(args):
 
 
 if __name__ == '__main__':
-    setup_logging()
+    logging_tools.setup_logging()
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("-i", "--image", required=True, help="Path to the image")
