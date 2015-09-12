@@ -17,6 +17,7 @@ import sklearn.grid_search
 import sklearn.metrics
 import sklearn.linear_model
 import math
+import cPickle
 
 def train_classifier(args):
     logger = logging.getLogger(__name__)
@@ -28,6 +29,9 @@ def train_classifier(args):
 
 
     limit = 100000
+    if limit:
+        logger.warning("training set is limited to {} first samples".format(limit))
+
     X = X_loaded[:limit]
     y = y_loaded[:limit].astype('bool')
     logger.info("X.shape {}".format(X.shape))
@@ -46,6 +50,12 @@ def train_classifier(args):
                                        scoring=sklearn.metrics.make_scorer(sklearn.metrics.roc_auc_score))
 
     clf.fit(X_train, y_train)
+
+    path_dst = args['path_classifier']
+    if path_dst:
+        with open(path_dst, "wb") as fout:
+            cPickle.dump(clf, fout)
+        logger.info("Classifier saved to {}".format(path_dst))
 
     # for comparison
     dummy = sklearn.dummy.DummyClassifier(random_state=0)
@@ -70,12 +80,14 @@ if __name__ == '__main__':
     setup_logging()
     ap = argparse.ArgumentParser(description=__doc__,
                                  epilog= \
-                                 """Example of usage:\n
-    python ./generate_train_set.py -ti "./vid/frame_{:05d}.jpg" -tl "./vid/frame_{:05d}.jpg.labels.txt"
-    -d "saved_data_test.hdf5" -s 350 -e 355 -i 1""")
+                                 """Example of usage\n
+    Training classifier using prepared dataset.
+    python ./train_classifier.py -i ./saved_data.hdf5 -o classifier.pickle""",
+    formatter_class=argparse.RawTextHelpFormatter)
 
     ap.add_argument("-i", dest='path_data', required=True, help="path to input HDF5 dataset")
     ap.add_argument("-v", dest='verbose', required=False, type=int, default=False, help="verbose output")
+    ap.add_argument("-o", dest='path_classifier', required=False, default="", help="path to output trained classifier")
 
     args = vars(ap.parse_args())
 

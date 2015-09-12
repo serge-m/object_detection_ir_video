@@ -128,6 +128,7 @@ def process_one_frame(path_img0, path_labels0, path_img1, path_labels1,
                       logger=logging.getLogger("process_one_frame"),
                       classifier=None):
     """
+    Generates features for manual markup (with minor filtering of results) or classifies using trained classifier
 
     :param path_img0:
     :param path_labels0:
@@ -135,7 +136,7 @@ def process_one_frame(path_img0, path_labels0, path_img1, path_labels1,
     :param path_labels1:
     :param figure: False for no display, None for new figure, otherwise figure to plot on
     :param logger:
-    :param classifier:
+    :param classifier: None or trained classifier
     :return:
     """
 
