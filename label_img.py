@@ -13,6 +13,12 @@ import logging.config
 import json 
 
 
+_button_reset = "r"
+_button_add = "a"
+_button_quit = "q"
+_button_save = "s"
+_postfix_labels_file = ".labels.txt"
+
 def setup_logging():
     """
     Setup logging module using 'logging_config.json' configuration file
@@ -26,6 +32,10 @@ def setup_logging():
 
 
 class ImgNames(object):
+    """
+    Storage for images names in a directory.
+    The list of files is created once at the initialization.
+    """
     set_supported_ext = ['.jpg', '.png', '.bmp']
     def __init__(self, path_img):
         self.path_start = path_img
@@ -38,6 +48,11 @@ class ImgNames(object):
         self.idx_cur = self.list_files.index(fname_start)
 
     def get(self, step=0):
+        """
+        Navigation between files in the directory.
+        :param step: integer step (can be positive, zero and negative)
+        :return: path to the corresponding image file
+        """
         logger = logging.getLogger(__name__)
         self.idx_cur += step
         path = os.path.join(self.path_dir, self.list_files[self.idx_cur])
@@ -46,6 +61,9 @@ class ImgNames(object):
 
 
 class ImageWithROI(object):
+    """
+    Stores image with selected regions on it.
+    """
     def __init__(self):
         self.path_img = None
         self.image = None
@@ -68,9 +86,16 @@ class ImageWithROI(object):
             writer = csv.writer(csvfile, delimiter=' ', quotechar='"')
             writer.writerows(list_rect)
             
-                    
+    def load(self, path_img, postfix_labels=_postfix_labels_file):
+        """
+        Loads new image to the container. If there is also labels file along with the image, then
+        load also stored regions.
+        Labels files are assumed to have names like <path_img><postfix_labels>.
 
-    def load(self, path_img, prefix_labels=".labels2.txt"):
+        :param path_img: image to load
+        :param postfix_labels: postfix for labels files
+        :return: None
+        """
         logger = logging.getLogger(__name__)
         logger.info("Trying to load image {}".format(path_img))
         image = cv2.imread(path_img)
@@ -81,7 +106,7 @@ class ImageWithROI(object):
         self.path_img = path_img
         self.image = image
         self.image_clean = self.image.copy()
-        self.path_labels = self.path_img + prefix_labels
+        self.path_labels = self.path_img + postfix_labels
         self.list_rect = self.load_csv(self.path_labels)
         for rect in self.list_rect:
             cv2.rectangle(self.image, tuple(rect[0:2]), tuple(rect[2:4]), (0, 255, 0), 2)
@@ -95,7 +120,12 @@ class ImageWithROI(object):
         self.list_rect.append(rect)
         cv2.rectangle(self.image, tuple(rect[0:2]), tuple(rect[2:4]), (0, 255, 0), 2)
 
-    def get_image(self, rect = None):
+    def get_image(self, rect=None):
+        """
+        Returns stored image of patch of the image defined by ROI
+        :param rect: ROI to load. None by default
+        :return: image of part of the image
+        """
         logger = logging.getLogger(__name__)
         logger.debug("{} -> get_image. {}".format(self, rect))
         if rect is None:
@@ -106,8 +136,11 @@ class ImageWithROI(object):
         self.list_rect = []
         self.image = self.image_clean.copy()
 
-
     def save(self):
+        """
+        Save stored regions to labels file
+        :return:
+        """
         logger = logging.getLogger(__name__)
         
         if self.path_labels is not None:
@@ -118,37 +151,17 @@ class ImageWithROI(object):
                 logger.warning("self.path_labels is empty, list_rect {}".format(self.list_rect))
 
 
-# # initialize the list of reference points and boolean indicating
-# # whether cropping is being performed or not
-# refPt = []
-# cropping = False
- 
-# def click_and_crop(event, x, y, flags, param):
-#     # grab references to the global variables
-#     global refPt, cropping
- 
-#     # if the left mouse button was clicked, record the starting
-#     # (x, y) coordinates and indicate that cropping is being
-#     # performed
-#     if event == cv2.EVENT_LBUTTONDOWN:
-#         refPt = [(x, y)]
-#         cropping = True
- 
-#     # check to see if the left mouse button was released
-#     elif event == cv2.EVENT_LBUTTONUP:
-#         # record the ending (x, y) coordinates and indicate that
-#         # the cropping operation is finished
-#         refPt.append((x, y))
-#         cropping = False
- 
-#         # draw a rectangle around the region of interest
-#         cv2.rectangle(image, refPt[0], refPt[1], (0, 255, 0), 2)
-#         cv2.imshow("image", image)
-
-
-
-class DisplayImage(object):
+class GUIMarkup(object):
+    """
+    Class of GUI for image markup.
+    """
     def __init__(self, name_main_window, image_container):
+        """
+        Initialize window, set callbacks
+        :param name_main_window: string, name of the window
+        :param image_container: must implement get_image() method
+        :return:
+        """
         self.selection = []
         self.cropping = False
         self.name_main_window = name_main_window
@@ -157,8 +170,6 @@ class DisplayImage(object):
         self.image_container = image_container
         self.image = self.image_container.get_image()
         
-        
-
         def click_and_crop(event, x, y, flags, param):
             logger = logging.getLogger(__name__)
             if event == cv2.EVENT_LBUTTONDOWN:
@@ -180,7 +191,6 @@ class DisplayImage(object):
                 cv2.rectangle(self.image, self.selection[0], self.selection[1], (0, 255, 0), 2)
                 cv2.imshow(self.name_main_window, self.image)
 
-
         cv2.setMouseCallback(self.name_main_window, click_and_crop)
 
     def update_image(self):
@@ -194,11 +204,55 @@ class DisplayImage(object):
         cv2.destroyWindow("ROI")
 
     def get_rect(self):
+        """
+        Returns selection as rectangle
+        :return: (x1,y1,x2,y2) tuple if rectangle is selected, None otherwise
+        """
         if len(self.selection) == 2:
             return list(itertools.chain.from_iterable(self.selection))
         return None
         
-        
+
+def interactive_labeling(args):
+    """
+    Main loop of GUI
+    :param args: dictionary with parameters
+    :return:
+    """
+    img_names = ImgNames(args["image"])
+
+    img_container = ImageWithROI()
+    img_container.load(img_names.get())
+
+    gui = GUIMarkup("image", img_container)
+
+    gui.show_image()
+    # keep looping until the 'q' key is pressed
+    while True:
+        key = cv2.waitKey(1) & 0xFF
+
+        if key == ord(_button_reset):
+            img_container.clear_image()
+            gui.update_image()
+        elif key == ord(_button_add):
+            rect = gui.get_rect()
+            img_container.add_rect(rect)
+            roi = img_container.get_image(rect)
+            if roi is not None:
+                cv2.imshow("ROI", roi)
+        elif key == ord(_button_quit):
+            break
+        elif key == ord(_button_save):
+            img_container.save()
+        elif key ^ 0xFF and key == 85:
+            img_container.load(img_names.get(+1))
+            gui.update_image()
+        elif key ^ 0xFF and key == 86:
+            img_container.load(img_names.get(-1))
+            gui.update_image()
+
+    cv2.destroyAllWindows()
+
 
 if __name__ == '__main__':
     setup_logging()
@@ -206,48 +260,18 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("-i", "--image", required=True, help="Path to the image")
     args = vars(ap.parse_args())
+
+    print """Select regions using mouse\n
+General pipeline:
+    1) Navigate to frame
+    2) Select region
+    3) Press "{_button_add}" to add region to list. Repeat steps 2-3 if required.
+    4) Press "{_button_save}" to save
+Controls:
+    {_button_reset} - reset selection
+    {_button_add} - add crop (selection) to the list, show cropped region
+    {_button_quit} - quit
+    {_button_save} - save selection to file
+    PageUp, PageDown - navigation""".format(**locals())
      
-    # load the image, clone it, and setup the mouse callback function
-    
-    imgnames = ImgNames(args["image"])
-
-    img_container = ImageWithROI()
-    img_container.load(imgnames.get())
-    
-    display_image = DisplayImage("image", img_container)
-     
-    display_image.show_image()
-    # keep looping until the 'q' key is pressed
-    while True:
-        # display the image and wait for a keypress
-        
-        key = cv2.waitKey(1) & 0xFF
-     
-        # if the 'r' key is pressed, reset the cropping region
-        if key == ord("r"):
-            img_container.clear_image()
-            display_image.update_image()
-            
-        # if the 'c' key is pressed, break from the loop
-        elif key == ord("c"):
-            rect = display_image.get_rect()
-            img_container.add_rect(rect)
-            roi = img_container.get_image(rect)
-            if roi is not None:
-                cv2.imshow("ROI", roi)
-
-        elif key == ord("q"):
-            break
-        elif key == ord("s"):
-            img_container.save()    
-        elif key ^ 0xFF and key == 85:
-            img_container.load(imgnames.get(+1))
-            display_image.update_image()
-        elif key ^ 0xFF and key == 86:
-            img_container.load(imgnames.get(-1))
-            display_image.update_image()
-
-
-    
-             
-    cv2.destroyAllWindows()
+    interactive_labeling(args)
