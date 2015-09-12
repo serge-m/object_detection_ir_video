@@ -12,63 +12,17 @@ import logging
 import logging.config
 import json 
 
+
 def setup_logging():
-    json_config = """
-    {
-        "version": 1,
-        "disable_existing_loggers": false,
-        "formatters": {
-            "simple": {
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-            }
-        },
-
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "level": "DEBUG",
-                "formatter": "simple",
-                "stream": "ext://sys.stdout"
-            },
-
-            "info_file_handler": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "level": "INFO",
-                "formatter": "simple",
-                "filename": "info.log",
-                "maxBytes": 10485760,
-                "backupCount": 20,
-                "encoding": "utf8"
-            },
-
-            "error_file_handler": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "level": "ERROR",
-                "formatter": "simple",
-                "filename": "errors.log",
-                "maxBytes": 10485760,
-                "backupCount": 20,
-                "encoding": "utf8"
-            }
-        },
-
-        "loggers": {
-            "my_module": {
-                "level": "ERROR",
-                "handlers": ["console"],
-                "propagate": "no"
-            }
-        },
-
-        "root": {
-            "level": "DEBUG",
-            "handlers": ["console", "info_file_handler", "error_file_handler"]
-        }
-    }"""
-
-    dict_config = json.loads(json_config)
+    """
+    Setup logging module using 'logging_config.json' configuration file
+    :return:
+    """
+    name_json = 'logging_config.json'
+    path_json = os.path.join(os.path.dirname(__file__), name_json)
+    with open(path_json, 'r') as f_json:
+        dict_config = json.load(f_json)
     logging.config.dictConfig(dict_config)
-
 
 
 class ImgNames(object):
